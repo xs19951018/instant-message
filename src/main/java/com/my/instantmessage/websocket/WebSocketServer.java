@@ -1,7 +1,8 @@
 package com.my.instantmessage.websocket;
 
-import com.alibaba.fastjson.JSONObject;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.context.ContextLoader;
 
 import javax.websocket.*;
 import javax.websocket.server.PathParam;
@@ -11,41 +12,52 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
-@ServerEndpoint("/socketServer/{userId}")
+@ServerEndpoint("/public/socketServer/{userId}")
 public class WebSocketServer {
 
     private static int onlineCount = 0;
-    private static Map<String, WebSocketServer> clients = new ConcurrentHashMap<String, WebSocketServer>();
+    private static Map<String, WebSocketServer> clients = new ConcurrentHashMap<String, WebSocketServer>(300);
     private Session session;
-    private String username;
+    private String userId;
+    private String activityId;
+    private boolean isZt = false;    //是主体单位
+
+    // 注入接口,不能使用@Autowire注解
+    /*private IBxgcPjResultService pjResultService = (IBxgcPjResultService) ContextLoader
+            .getCurrentWebApplicationContext().getBean("bxgcPjResultService");*/
 
     @OnOpen
-    public void onOpen(@PathParam("username") String username, Session session) throws IOException {
-
-        this.username = username;
+    public synchronized void onOpen(@PathParam("userId") String userId,
+                                    Session session) throws IOException {
+        this.activityId = activityId;
+        this.userId = userId;
         this.session = session;
 
-        addOnlineCount();
-        clients.put(username, this);
-        System.out.println("已连接");
+        //判断是否存在此id
+        if(clients.get(userId) != null){
+            session.getAsyncRemote().sendText("1");
+        }else{
+            isZt = true;
+            addOnlineCount();
+            clients.put(userId, this);
+            System.out.println("已连接");
+            session.getAsyncRemote().sendText("0");
+        }
     }
 
     @OnClose
     public void onClose() throws IOException {
-        clients.remove(username);
-        subOnlineCount();
+        System.out.println("关闭了.........");
+        //是主体单位关闭才会清除会话
+        if(isZt){
+            clients.remove(userId);
+            subOnlineCount();
+        }
     }
 
     @OnMessage
     public void onMessage(String message) throws IOException {
-
-        JSONObject jsonTo = JSONObject.parseObject(message);
-
-        if (!jsonTo.get("To").equals("All")){
-            sendMessageTo("给一个人", jsonTo.get("To").toString());
-        }else{
-            sendMessageAll("给所有人");
-        }
+        System.out.println(message);
     }
 
     @OnError
@@ -53,20 +65,25 @@ public class WebSocketServer {
         error.printStackTrace();
     }
 
-    public void sendMessageTo(String message, String To) throws IOException {
+    public static synchronized int clearSessionById(String userId) {
+        //遍历找到指定人的会话,向客户端发送消息(该二维码已被重置!)
         for (WebSocketServer item : clients.values()) {
-            if (item.username.equals(To) )
-                item.session.getAsyncRemote().sendText(message);
+            if (item.userId.equals(userId) ) {
+                item.isZt = true;
+                item.session.getAsyncRemote().sendText("2");
+            }
         }
+        return 1;
     }
 
-    public void sendMessageAll(String message) throws IOException {
+    public static synchronized int clearSessionAll() {
+        //清除所有session
         for (WebSocketServer item : clients.values()) {
-            item.session.getAsyncRemote().sendText(message);
+            item.isZt = true;
+            item.session.getAsyncRemote().sendText("2");
         }
+        return 1;
     }
-
-
 
     public static synchronized int getOnlineCount() {
         return onlineCount;

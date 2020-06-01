@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" >
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=0">
+    <title>提示</title>
+    <link th:href="@{/js/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/js/layui/css/modules/layer/default/layer.css}" rel="stylesheet">
+
+</head>
+
+<body>
+<div class="top-banner2">
+</div>
+<div class="main-wrap">
+
+    <div class="common-panel">
+        <div id="content" style="text-align: center;"></div>
+    </div>
+
+</div>
+
+<script th:src="@{/js/jquery-2.1.4.min.js}"></script>
+<script th:src="@{/js/layui/layui.js}"></script>
+<script th:src="@{/js/layui/lay/modules/layer.js}"></script>
+<script type="text/javascript">
+    var msg = [[${msg}]];
+
+    $(function () {
+        if(msg == '1'){
+            $("#content").text("提示：该二维码已使用。");
+        }
+    })
+
+    window.onbeforeunload=function(e){
+        pushHistory();
+    }
+    window.onclose=function(e){
+        console.log(2222)
+    }
+
+    $(function(){
+
+        pushHistory();
+        window.addEventListener("popstate", function(e) {
+            pushHistory();
+            //alert("请点击关闭按钮退出!");//根据自己的需求实现自己的功能
+            layer.msg('请点击关闭按钮退出!', {
+                icon: 1
+            });
+        }, false);
+
+    });
+
+    function pushHistory() {
+        var state = {
+            title: "title",
+            url: "#"
+        };
+        window.history.pushState(state, "title", "#");
+    }
+</script>
+</body>
+</html>
