@@ -1,9 +1,6 @@
 package com.my.instantmessage.websocket;
 
 import org.springframework.stereotype.Component;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.context.ContextLoader;
-
 import javax.websocket.*;
 import javax.websocket.server.PathParam;
 import javax.websocket.server.ServerEndpoint;

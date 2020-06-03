@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <div style="height: 400px;width: auto;border: 1px solid black;">
+        <div style="float: left;width: 30%;height: 100%;border-right: 1px solid black;">
+            <div style="margin: 10px;">
+                <select id="userId">
+                    <option value="001">001</option>
+                    <option value="002">002</option>
+                    <option value="003">003</option>
+                </select>
+                <button id="link">连接</button>
+                <button id="down">断开</button>
+            </div>
+            <div style="margin: 10px;">
+                <input id="msg">
+                <select id="receiver">
+                    <option value="-1">全部</option>
+                    <option value="001">001</option>
+                    <option value="002">002</option>
+                    <option value="003">003</option>
+                </select>
+                <button id="send">发送</button>
+            </div>
+        </div>
+        <div id="message" style="height: 100%;">
+            <!--聊天内容展示区域-->
+        </div>
+    </div>
+</body>
+
+<script src="../js/jquery-2.1.4.min.js"></script>
+<script type="text/javascript">
+    var websocket = null;
+    var userId = null;
+    var msg = null;     //消息
+    var receiver = null;//接收者
+
+    $(function () {
+        //连接
+        $("#link").click(function () {
+            //获取连接用户
+            userId = $("#userId").val();
+            openWebSocket(userId);
+        });
+        //断开连接
+        $("#down").click(function () {
+            //获取连接用户
+            userId = $("#userId").val();
+            closeWebSocket();
+        });
+        //发送消息
+        $("#send").click(function () {
+            msg = $("#msg").val();
+            receiver = $("#receiver").val();
+            if(msg == ''){
+                return false;
+            }
+            //定义消息对象
+            var map = {
+                'type': 1,
+                'receiver': receiver,
+                'content': msg
+            }
+            if(receiver == -1){
+                //群发消息
+                map["type"] = 2;
+            }
+            //调用接口
+            $.ajax({
+                type: 'post',
+                contentType : "application/json",//上传内容格式为json结构
+                url: '/public/socketTwo/send',
+                data: JSON.stringify(map),
+                success: function (data) {
+                    console.log(data)
+                }
+            });
+        });
+    })
+
+    function openWebSocket(userId) {
+        //判断当前浏览器是否支持WebSocket
+        if ('WebSocket' in window) {
+            websocket = new WebSocket("ws://localhost:7000/public/WebSocketServerTwo/"+userId);
+        } else {
+            alert('当前浏览器 Not support websocket')
+        }
+
+        //连接发生错误的回调方法
+        websocket.onerror = function() {
+            setMessageInnerHTML("WebSocket连接发生错误");
+        };
+
+        //连接成功建立的回调方法
+        websocket.onopen = function() {
+            setMessageInnerHTML("WebSocket连接成功");
+        }
+
+        //接收到消息的回调方法
+        websocket.onmessage = function(event) {
+            //处理消息
+            handleMsg(event.data);
+        }
+
+        //连接关闭的回调方法
+        websocket.onclose = function() {
+            setMessageInnerHTML("WebSocket连接关闭");
+        }
+
+        //监听窗口关闭事件，当窗口关闭时，主动去关闭websocket连接，防止连接还没断开就关闭窗口，server端会抛异常。
+        window.onbeforeunload = function() {
+            setMessageInnerHTML("窗口关闭事件");
+            closeWebSocket();
+        }
+        <!--webSocket结束-->
+    }
+
+    //关闭WebSocket连接
+    function closeWebSocket() {
+        websocket.close();
+    }
+    function setMessageInnerHTML(msg) {
+        console.log(msg)
+    }
+
+    //处理接收到的消息
+    function handleMsg(msg) {
+        var html = '<span>'+msg+'</span></br>';
+        $("#message").append(html);
+    }
+
+</script>
+</html>
